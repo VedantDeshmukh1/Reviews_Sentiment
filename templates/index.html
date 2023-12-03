@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.rawgit.com/timdream/wordcloud2.js/gh-pages/src/wordcloud2.js"></script>
+</head>
+<body>
+    <h1>Sentiment Analysis Visualization</h1>
+    
+    <div id="pie-chart" style="width: 50%;"></div>
+    
+    <h2>Positive Sentiment Word Cloud</h2>
+    <img src="/static/wordcloud (3).png" style="width: 50%;"> <!-- Assuming you have a static folder with wordcloud.png -->
+    <div id="word-cloud"></div>
+
+    <!--<h2>Positive Sentiment Bar Chart</h2>
+    <div id="bar-chart"></div> -->
+
+    <script>
+        // Fetch sentiments data from the Flask route
+        fetch('/get_sentiments')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+
+                // Your existing code here
+                // Create a pie chart using d3.s
+                const pieWidth = 300;
+                const pieHeight = 300;
+                const pieRadius = Math.min(pieWidth, pieHeight) / 2;
+
+                const color = d3.scaleOrdinal()
+                    .domain(data.map(d => d.sentiment))
+                    .range(d3.schemeCategory10);
+
+                const pie = d3.pie().value(d => d.count);
+                const pieArc = d3.arc().innerRadius(0).outerRadius(pieRadius);
+
+                const pieSvg = d3.select('#pie-chart')
+                    .append('svg')
+                    .attr('width', pieWidth)
+                    .attr('height', pieHeight)
+                    .append('g')
+                    .attr('transform', `translate(${pieWidth / 2},${pieHeight / 2})`);
+
+                const pieArcs = pieSvg.selectAll('arc')
+                    .data(pie(data))
+                    .enter()
+                    .append('g')
+                    .attr('class', 'arc');
+
+                pieArcs.append('path')
+                    .attr('d', pieArc)
+                    .attr('fill', d => color(d.data.sentiment));
+
+                pieArcs.append('text')
+                    .attr('transform', d => `translate(${pieArc.centroid(d)})`)
+                    .attr('dy', '0.35em')
+                    .style('text-anchor', 'middle')
+                    .text(d => `${d.data.sentiment} (${d.data.count})`);
+
+                // Fetch word cloud data from the Flask route
+                fetch('/get_positive_words')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Create a word cloud using wordcloud2.js
+                        wordcloud2(document.getElementById('word-cloud'), {
+                            list: data.map(d => ({ word: d.word, weight: d.count })),
+                            gridSize: 10,
+                            weightFactor: 5,
+                            fontFamily: 'Arial, sans-serif',
+                            color: 'random-light',
+                            backgroundColor: '#fff'
+                        });
+                    })
+                    .catch(error => console.error('Error fetching word cloud data:', error));
+
+                // Fetch positive words data from the Flask route for the bar chart
+                fetch('/get_positive_words')
+        .then(response => response.json())
+        .then(data => {
+            console.log("Original Data:", data);
+
+            // Filter out data points with NaN values
+            data = data.filter(d => !isNaN(d.count));
+            console.log("Filtered Data:", data);
+
+            if (data.length === 0) {
+                console.error('Filtered data is empty. Check the original data for NaN values.');
+                return;
+            }
+
+            // Create a bar chart using d3.js
+            const barWidth = 300;
+            const barHeight = 300;
+
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.word))
+                .range([0, barWidth])
+                .padding(0.1);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.count)])
+                .range([barHeight, 0]);
+
+            const barColor = d3.scaleOrdinal()
+                .domain(data.map(d => d.word))
+                .range(d3.schemeCategory10);
+
+            const barSvg = d3.select('#bar-chart')
+                .append('svg')
+                .attr('width', barWidth)
+                .attr('height', barHeight);
+
+            barSvg.selectAll('rect')
+                .data(data)
+                .enter()
+                .append('rect')
+                .attr('x', d => x(d.word))
+                .attr('y', d => y(d.count))
+                .attr('width', x.bandwidth())
+                .attr('height', d => barHeight - y(d.count))
+                .attr('fill', d => barColor(d.word));
+
+            barSvg.selectAll('text')
+                .data(data)
+                .enter()
+                .append('text')
+                .text(d => `${d.word} (${d.count})`)
+                .attr('x', d => x(d.word) + x.bandwidth() / 2)
+                .attr('y', d => y(d.count) - 5)
+                .style('text-anchor', 'middle')
+                .style('font-size', '10px')
+                .style('fill', 'black');
+        })
+                    .catch(error => console.error('Error fetching positive words data:', error));
+            }) 
+            .catch(error => console.error('Error fetching sentiment data:', error));
+    </script>
+</body>
+</html>
